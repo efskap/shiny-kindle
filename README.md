@@ -1,4 +1,4 @@
-Basically I just added support for root windows of depth 8 and added conversion of 32-bit rgba buffers to 8-bit grayscale ones in the preUpload step.
+Basically I just added support for X11 root windows of depth 8 and added conversion of 32-bit rgba buffers to 8-bit grayscale ones in the preUpload step.
 
 So the MIT-SHM stuff operates on a greyscale buffer, while clients work on a normal `*image.RGBA`
 
