@@ -40,7 +40,7 @@ type screenImpl struct {
 	atomWMTakeFocus    xproto.Atom
 
 	pixelsPerPt  float32
-	pictformat8 render.Pictformat
+	pictformat8  render.Pictformat
 	pictformat24 render.Pictformat
 	pictformat32 render.Pictformat
 
@@ -292,7 +292,7 @@ func (s *screenImpl) NewBuffer(size image.Point) (retBuf screen.Buffer, retErr e
 	}
 
 	b := &bufferImpl{
-		s: s,
+		s:    s,
 		rgba: *image.NewRGBA(image.Rectangle{Max: size}),
 		//rgba: image.RGBA{
 		//	Stride: 4 * size.X,
@@ -444,9 +444,8 @@ func (s *screenImpl) NewWindow(opts *screen.NewWindowOptions) (screen.Window, er
 	title := []byte(opts.GetTitle())
 	xproto.ChangeProperty(s.xc, xproto.PropModeReplace, xw, s.atomNETWMName, s.atomUTF8String, 8, uint32(len(title)), title)
 	xproto.CreateGC(s.xc, xg, xproto.Drawable(xw), 0, nil)
-	cpCookie := render.CreatePicture(s.xc, xp, xproto.Drawable(xw), pictformat, 0, nil)
+	render.CreatePicture(s.xc, xp, xproto.Drawable(xw), pictformat, 0, nil)
 
-	fmt.Println("createpicture, seq=", cpCookie.Sequence)
 	xproto.MapWindow(s.xc, xw)
 
 	return w, nil
@@ -547,7 +546,7 @@ func (s *screenImpl) initPictformats() error {
 	if err != nil {
 		return fmt.Errorf("x11driver: render.QueryPictFormats failed: %v", err)
 	}
-	s.pictformat8,  err = findPictformat(pformats.Formats, 8)
+	s.pictformat8, err = findPictformat(pformats.Formats, 8)
 	if err != nil {
 		return err
 	}

@@ -5,7 +5,6 @@
 package x11driver
 
 import (
-	"fmt"
 	"image"
 	"image/color"
 	"image/draw"
@@ -54,7 +53,7 @@ func (b *bufferImpl) preUpload() {
 
 	for i := range b.buf {
 		src := b.rgba.Pix
-		b.buf[i] = src[i*4]/3 + src[i*4+1]/3 + src[i*4+2]/3
+		b.buf[i] = src[i*4]/3 + src[i*4+1]/2 + src[i*4+2]/10
 	}
 
 	if b.released {
@@ -115,7 +114,6 @@ func (b *bufferImpl) cleanUp() {
 }
 
 func (b *bufferImpl) upload(xd xproto.Drawable, xg xproto.Gcontext, depth uint8, dp image.Point, sr image.Rectangle) {
-	fmt.Println("upload, depth=",depth)
 	originalSRMin := sr.Min
 	sr = sr.Intersect(b.Bounds())
 	if sr.Empty() {
@@ -137,7 +135,6 @@ func (b *bufferImpl) upload(xd xproto.Drawable, xg xproto.Gcontext, depth uint8,
 		depth, xproto.ImageFormatZPixmap,
 		1, b.xs, 0, // 1 means send a completion event, 0 means a zero offset.
 	)
-	fmt.Println("upload seq=", cookie.Sequence)
 
 	completion := make(chan struct{})
 
