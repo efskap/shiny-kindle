@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-// +build !arm
+// +build arm
 
 package x11driver
 
@@ -18,8 +18,6 @@ import (
 	"github.com/BurntSushi/xgb/render"
 	"github.com/BurntSushi/xgb/shm"
 	"github.com/BurntSushi/xgb/xproto"
-
-	"golang.org/x/exp/shiny/driver/internal/swizzle"
 )
 
 type bufferImpl struct {
@@ -48,18 +46,23 @@ func (b *bufferImpl) preUpload() {
 	// 100% of all cases; it simply tries to detect some invalid uses of a
 	// screen.Buffer such as:
 	//	*buffer.RGBA() = anotherImageRGBA
-	if len(b.buf) != 0 && len(b.rgba.Pix) != 0 && &b.buf[0] != &b.rgba.Pix[0] {
-		panic("x11driver: invalid Buffer.RGBA modification")
-	}
+	//if len(b.buf) != 0 && len(b.rgba.Pix) != 0 && &b.buf[0] != &b.rgba.Pix[0] {
+	//	panic("x11driver: invalid Buffer.RGBA modification")
+	//}
 
 	b.mu.Lock()
 	defer b.mu.Unlock()
+
+	for i := range b.buf {
+		src := b.rgba.Pix
+		b.buf[i] = src[i*4]/3 + src[i*4+1]/2 + src[i*4+2]/10
+	}
 
 	if b.released {
 		panic("x11driver: Buffer.Upload called after Buffer.Release")
 	}
 	if b.nUpload == 0 {
-		swizzle.BGRA(b.buf)
+		//swizzle.BGRA(b.buf)
 	}
 	b.nUpload++
 }
@@ -76,7 +79,7 @@ func (b *bufferImpl) postUpload() {
 	if b.released {
 		go b.cleanUp()
 	} else {
-		swizzle.BGRA(b.buf)
+		//swizzle.BGRA(b.buf)
 	}
 }
 

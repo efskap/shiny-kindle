@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-// +build !arm
+// +build arm
 
 package x11driver
 
@@ -42,6 +42,7 @@ type screenImpl struct {
 	atomWMTakeFocus    xproto.Atom
 
 	pixelsPerPt  float32
+	pictformat8  render.Pictformat
 	pictformat24 render.Pictformat
 	pictformat32 render.Pictformat
 
@@ -293,11 +294,12 @@ func (s *screenImpl) NewBuffer(size image.Point) (retBuf screen.Buffer, retErr e
 	}
 
 	b := &bufferImpl{
-		s: s,
-		rgba: image.RGBA{
-			Stride: 4 * size.X,
-			Rect:   image.Rectangle{Max: size},
-		},
+		s:    s,
+		rgba: *image.NewRGBA(image.Rectangle{Max: size}),
+		//rgba: image.RGBA{
+		//	Stride: 4 * size.X,
+		//	Rect:   image.Rectangle{Max: size},
+		//},
 		size: size,
 	}
 
@@ -310,7 +312,7 @@ func (s *screenImpl) NewBuffer(size image.Point) (retBuf screen.Buffer, retErr e
 			return nil, fmt.Errorf("x11driver: shm.NewSegId: %v", err)
 		}
 
-		bufLen := 4 * size.X * size.Y
+		bufLen := size.X * size.Y
 		shmid, addr, err := shmOpen(bufLen)
 		if err != nil {
 			return nil, fmt.Errorf("x11driver: shmOpen: %v", err)
@@ -322,7 +324,6 @@ func (s *screenImpl) NewBuffer(size image.Point) (retBuf screen.Buffer, retErr e
 		}()
 		a := (*[maxShmSize]byte)(addr)
 		b.buf = (*a)[:bufLen:bufLen]
-		b.rgba.Pix = b.buf
 		b.addr = addr
 
 		// readOnly is whether the shared memory is read-only from the X11 server's
@@ -403,6 +404,8 @@ func (s *screenImpl) NewWindow(opts *screen.NewWindowOptions) (screen.Window, er
 	switch s.xsi.RootDepth {
 	default:
 		return nil, fmt.Errorf("x11driver: unsupported root depth %d", s.xsi.RootDepth)
+	case 8:
+		pictformat = s.pictformat8
 	case 24:
 		pictformat = s.pictformat24
 	case 32:
@@ -442,9 +445,9 @@ func (s *screenImpl) NewWindow(opts *screen.NewWindowOptions) (screen.Window, er
 
 	title := []byte(opts.GetTitle())
 	xproto.ChangeProperty(s.xc, xproto.PropModeReplace, xw, s.atomNETWMName, s.atomUTF8String, 8, uint32(len(title)), title)
-
 	xproto.CreateGC(s.xc, xg, xproto.Drawable(xw), 0, nil)
 	render.CreatePicture(s.xc, xp, xproto.Drawable(xw), pictformat, 0, nil)
+
 	xproto.MapWindow(s.xc, xw)
 
 	return w, nil
@@ -545,6 +548,10 @@ func (s *screenImpl) initPictformats() error {
 	if err != nil {
 		return fmt.Errorf("x11driver: render.QueryPictFormats failed: %v", err)
 	}
+	s.pictformat8, err = findPictformat(pformats.Formats, 8)
+	if err != nil {
+		return err
+	}
 	s.pictformat24, err = findPictformat(pformats.Formats, 24)
 	if err != nil {
 		return err
@@ -571,6 +578,9 @@ func findPictformat(fs []render.Pictforminfo, depth byte) (render.Pictformat, er
 	if depth == 24 {
 		want.AlphaShift = 0
 		want.AlphaMask = 0x00
+	}
+	if depth == 8 {
+		want = render.Directformat{AlphaMask: 0xFF}
 	}
 	for _, f := range fs {
 		if f.Type == render.PictTypeDirect && f.Depth == depth && f.Direct == want {
